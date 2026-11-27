@@ -16,5 +16,4 @@ As you can see nothing really changed past the first few iterations, our final r
 
 ## SGD w/ Changing learning rate
 
-
 ## SGD w/ Changing learning rate + momentum
