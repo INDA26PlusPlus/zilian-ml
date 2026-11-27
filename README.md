@@ -26,6 +26,27 @@ Accuracy: 93.8%
 Iteration [500]
 Accuracy: 93.8%
 ```
-Now we can see that the accuracy slowly improves over time, but nothing seams to get past ~95%, either we're getting stuck in some local minimum or our neural net is just too simple to get past this point. 
+Now we can see that the accuracy slowly improves over time, but nothing seams to get past ~95%, either we're getting stuck in some local minimum or our neural net is just too simple to get past this point.
+
+Increasing the nodes in our hidden layer from 10 to 128 increases the computation needed significantly, but we also get a sizable improvement to our accuracy:
+
+```tex
+Iteration [140]
+Accuracy: 97.6%
+Iteration [150]
+Accuracy: 97.6%
+```
+Although we again hit a ceiling and can't seam to get past ~98%. We can try to add more layers to our NN and see if that can help us. Instead of one 128 long layer, we'll assign two layers with the same nodes per layer:
+
+```tex
+Accuracy: 97.0%
+Iteration [40]
+Accuracy: 97.0%
+Iteration [50]
+Accuracy: 97.0%
+```
+
+Computation now takes significantly longer but we still can't seam to cross the 98& barrier, even when re-training the NN multiple times, we could try to add momentum to our design but it's doubtful it will yield the needed boost, changing our activation function to ReLu might be a better approach.
 
 ## SGD w/ Changing learning rate + momentum
+Didn't do this ._. don't think it's needed for the assignment and I'm happy where I am thus far.

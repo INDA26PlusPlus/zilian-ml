@@ -23,11 +23,14 @@ fn main() {
     */
  
     // Training loop
-    let mut model = model::Model::new();
+    let sizes = [784, 128, 128, 10];
+    let mut model = model::Model::new(sizes);
+
+    // ===
     let y_train = data.y_label();
     let mut indices: Vec<usize> = (0..data.train_data.nrows()).collect();
-    let mut learning_rate = 1.0;
-    for iteration in 0..501 {
+    let mut learning_rate = 0.1;
+    for iteration in 0..51 {
 
         // ==== Stochastic Gradient Decent, divide the data into chunks to speed up training ====   
         indices.shuffle(&mut ndarray_rand::rand::rng());
@@ -39,12 +42,11 @@ fn main() {
             let cache = model.forward_propagation(&x_group);
             model.backward_propagation(&x_group, &y_group, &cache, learning_rate);
         }
-
+        learning_rate *= 0.9;
         // Get accuracy on test data
         if iteration % 10 == 0 {
             let test_cache = model.forward_propagation(&data.test_data);
-            let acc = model::get_accuracy(&test_cache.a2, &data.test_labels);
-            learning_rate = learning_rate / 1.2;
+            let acc = model::get_accuracy(test_cache.nodes.last().unwrap(), &data.test_labels);
 
             println!("Iteration [{}]", iteration);
             println!("Accuracy: {:.1}%", acc * 100.0);

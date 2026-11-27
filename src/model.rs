@@ -2,77 +2,99 @@ use ndarray::prelude::*;
 use ndarray_rand::{RandomExt, rand_distr::Uniform};
 
 pub struct Model {
-    w1: Array2<f32>,
-    b1: Array1<f32>,
-    w2: Array2<f32>,
-    b2: Array1<f32>, 
+    // List of weights and biases
+    weights: Vec<Array2<f32>>,
+    biases:  Vec<Array1<f32>>,
+    layers: usize,
 }
 
 // Forward values
 pub struct Cache {
-    pub _z1: Array2<f32>,
-    pub a1: Array2<f32>,
-    pub _z2: Array2<f32>,
-    pub a2: Array2<f32>, // output probabilities
+    // List of nodes saved for backward_propagation
+    // Includes x (input), a1, a2, ..., output
+    pub nodes: Vec<Array2<f32>>
 }
 
 impl Model {
-    pub fn new() -> Self {
+    pub fn new(sizes: [usize; 4]) -> Self {
 
         // Set random weight/biases
         let dist = Uniform::new(-0.5, 0.5).unwrap();
+        let mut weights = Vec::new();
+        let mut biases = Vec::new();
+        let layers = sizes.len() - 1;
 
-        // Hidden layer 1
-        let w1 = Array2::random((784, 10), dist);
-        let b1 = Array1::random(10, dist);
+        for l in 0..layers {
+            weights.push(Array2::random((sizes[l], sizes[l + 1]), dist));
+            biases.push(Array1::random(sizes[l + 1], dist));
+        }
 
-        // Output layer
-        let w2 = Array2::random((10, 10), dist);
-        let b2 = Array1::random(10, dist);
-
-        return Self { w1, b1, w2, b2 };
+        return Self { weights, biases, layers};
     }
 
+    // Forward pass:
+    // Input to prediction
     pub fn forward_propagation(&self, x: &Array2<f32>) -> Cache {
-        // Hidden layer matrix multiplication with weight + bias
-        let _z1 = x.dot(&self.w1) + &self.b1;
-        let mut a1 = _z1.clone();
-        sigmoid(&mut a1);
 
-        // Output matrix multiplication with weight + bias
-        let _z2 = &a1.dot(&self.w2) + &self.b2;
-        let mut a2 = _z2.clone();
-        softmax(&mut a2);
+        // Current images raw data
+        let mut a = x.clone();
+        let mut nodes = Vec::new();
+        nodes.push(x.clone()); // Raw data as first layer to cache
 
-        return Cache { _z1, a1, _z2, a2 };
+
+        for layer in 0..self.layers {
+
+            // z = a * w + b
+            let mut z = a.dot(&self.weights[layer]) + &self.biases[layer];
+            if layer == self.layers-1 {
+                softmax(&mut z); // last layer
+            } 
+            else {
+                sigmoid(&mut z); // activation
+            }
+            a = z.clone(); // new input nodes
+
+            nodes.push(z);
+        }
+
+        return Cache { nodes };
     }
 
+    // Backward pass
     pub fn backward_propagation(&mut self, x: &Array2<f32>, y_label: &Array2<f32>, cache: &Cache, learning_rate: f32) {
 
-        // Each row is a new sample
+        // Number of images
         let m = x.nrows() as f32;
 
-        // Output layer
-        let dz2 = &cache.a2 - y_label;          // Output error
-        let dw2 = cache.a1.t().dot(&dz2) / m;   // Average weight error
-        let db2 = dz2.sum_axis(Axis(0)) / m;    // Average bias error
+        // Output error
+        let mut dz = cache.nodes.last().unwrap() - y_label;
 
-        // Hidden layer
-        let mut a1_deriv = cache.a1.clone();
-        deriv_sigmoid(&mut a1_deriv);   // 
-        let dz1 = dz2.dot(&self.w2.t()) * &a1_deriv;    // Node error
-        let dw1 = x.t().dot(&dz1) / m;                  // Average weight error
-        let db1 = dz1.sum_axis(Axis(0)) / m;            // Average basis error
+        for layer in (0..self.layers).rev() {
 
-        // Step in the direction that decreases error most
-        self.w1 -= &(dw1 * learning_rate);
-        self.b1 -= &(db1 * learning_rate);
-        self.w2 -= &(dw2 * learning_rate);
-        self.b2 -= &(db2 * learning_rate);
+            // Activation going into current layer so:
+            // output <- layer-1 <- ... <- 0 <- x
+            let a_prev = &cache.nodes[layer];
+            // how error changes depending on weight
+            let dw = a_prev.t().dot(&dz) / m;
+            // how error changes depending on bias
+            let db = dz.sum_axis(Axis(0)) / m;
+
+            // Propagate back (cant if 0)
+            if layer > 0 {
+                let mut a_deriv = cache.nodes[layer].clone();
+                deriv_sigmoid(&mut a_deriv);
+
+                // Each nodes previous error (so we know the error going back and how much it matters)
+                dz = dz.dot(&self.weights[layer].t()) * a_deriv;
+            }
+
+            self.weights[layer] -= &(dw * learning_rate);
+            self.biases[layer] -= &(db * learning_rate);
+        }
     }
 }
 
-// Activation
+// Activation function
 pub fn sigmoid(z: &mut Array2<f32>) {
     z.mapv_inplace(|x| 1.0 / (1.0 + (-x).exp()));
 }
